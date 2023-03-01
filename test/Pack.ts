@@ -62,8 +62,8 @@ describe("Burn and receive gear", function () {
       expect(await gear.balanceOf(otherAccount.address)).to.equal(1);
     });
 
-    it("Should fail even if somebody wants to burn token from other user not even the owner", async function () {
-      const { pack, otherAccount, secondAccount, owner } = await loadFixture(
+    it("Should fail if somebody wants to burn token from other user", async function () {
+      const { pack, otherAccount, secondAccount } = await loadFixture(
         deployOneYearLockFixture
       );
 
@@ -74,14 +74,10 @@ describe("Burn and receive gear", function () {
       await expect(pack.connect(secondAccount).burnPack(1)).to.be.revertedWith(
         "ERC721Burnable: caller is not owner nor approved"
       );
-
-      await expect(pack.connect(owner).burnPack(1)).to.be.revertedWith(
-        "ERC721Burnable: caller is not owner nor approved"
-      );
     });
 
-    it("Should fail even if somebody try to burn an unminted token", async function () {
-      const { pack, otherAccount, secondAccount } = await loadFixture(
+    it("Should allow owner to burn token from other user", async function () {
+      const { pack, gear, otherAccount, owner } = await loadFixture(
         deployOneYearLockFixture
       );
 
@@ -89,8 +85,25 @@ describe("Burn and receive gear", function () {
 
       expect(await pack.balanceOf(otherAccount.address)).to.equal(1);
 
-      await expect(pack.connect(secondAccount).burnPack(2)).to.be.revertedWith(
-        "ERC721: invalid token ID"
+      await expect(pack.connect(owner).burnPack(1))
+        .to.emit(pack, "Transfer")
+        .withArgs(otherAccount.address, ethers.constants.AddressZero, 1);
+
+      expect(await pack.balanceOf(otherAccount.address)).to.equal(0);
+      expect(await gear.balanceOf(otherAccount.address)).to.equal(1);
+    });
+
+    it("Should fail if somebody try to burn an unminted token", async function () {
+      const { pack, otherAccount, owner } = await loadFixture(
+        deployOneYearLockFixture
+      );
+
+      await pack.mintPack(otherAccount.address, "https://uri.here");
+
+      expect(await pack.balanceOf(otherAccount.address)).to.equal(1);
+
+      await expect(pack.connect(owner).burnPack(2)).to.be.revertedWith(
+        "ERC721: mint to the zero address"
       );
     });
   });
